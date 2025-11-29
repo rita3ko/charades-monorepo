@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "charades",
+  "name": "charades-monorepo",
   "main": "packages/api/src/index.js",
   "compatibility_date": "2024-09-18",
   "assets": {
