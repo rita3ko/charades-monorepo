@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import PhraseGenerator from './components/PhraseGenerator'
 import PhraseSubmitter from './components/PhraseSubmitter'
@@ -11,10 +11,30 @@ function Game() {
   const navigate = useNavigate()
   const [gameId, setGameId] = useState(id || null)
   const [joinValue, setJoinValue] = useState('')
+  const [stats, setStats] = useState({ total: 0, used: 0, remaining: 0 })
+
+  const fetchStats = useCallback(async () => {
+    if (!gameId) return
+    try {
+      const response = await fetch(`${API_BASE}/api/games/${gameId}/stats`)
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error)
+    }
+  }, [gameId])
 
   useEffect(() => {
     setGameId(id || null)
   }, [id])
+
+  useEffect(() => {
+    if (gameId) {
+      fetchStats()
+    }
+  }, [gameId, fetchStats])
 
   const handleNewGame = async () => {
     try {
@@ -31,6 +51,19 @@ function Game() {
     if (joinValue.trim()) {
       navigate(`/${joinValue.trim()}`)
       setGameId(joinValue.trim())
+    }
+  }
+
+  const handleReset = async () => {
+    if (!gameId) return
+    try {
+      const response = await fetch(`${API_BASE}/api/games/${gameId}/reset`, { method: 'POST' })
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      }
+    } catch (error) {
+      console.error('Failed to reset game:', error)
     }
   }
 
@@ -84,11 +117,32 @@ function Game() {
             <p><b>Share:</b> <a href={`/${gameId}`} className="text-indigo font-bold">charades.pizza/{gameId}</a></p>
           </div>
         </div>
+        
+        {/* Words Remaining Stats */}
+        <div className="flex flex-col bg-pink col-span-2 border-seafoam border-2 text-md text-red p-4">
+          <div className="flex justify-between items-center">
+            <div className="flex-1">
+              <p className="text-2xl font-black">
+                {stats.remaining} <span className="text-lg font-normal">words left</span>
+              </p>
+              <p className="text-sm">
+                {stats.used} used / {stats.total} total
+              </p>
+            </div>
+            <button 
+              onClick={handleReset}
+              className="hover:bg-red hover:text-pink text-red border-2 border-red font-bold py-1 px-3 rounded text-sm"
+            >
+              Reset Game
+            </button>
+          </div>
+        </div>
+
         <div className="col-span-1 sm:col-span-2">
-          <PhraseSubmitter gameId={gameId} />
+          <PhraseSubmitter gameId={gameId} onPhraseAdded={fetchStats} />
         </div>
         <div className="col-span-1 sm:col-span-2">
-          <PhraseGenerator gameId={gameId} />
+          <PhraseGenerator gameId={gameId} onPhraseDrawn={fetchStats} />
         </div>
       </div>
     </div>

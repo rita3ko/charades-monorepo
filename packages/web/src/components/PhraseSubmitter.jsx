@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 const API_BASE = ''
 
-function PhraseSubmitter({ gameId }) {
+function PhraseSubmitter({ gameId, onPhraseAdded }) {
   const [value, setValue] = useState('')
   const [status, setStatus] = useState(null)
 
@@ -20,6 +20,10 @@ function PhraseSubmitter({ gameId }) {
         setValue('')
         setStatus('Phrase added!')
         setTimeout(() => setStatus(null), 2000)
+        // Notify parent to refresh stats
+        if (onPhraseAdded) {
+          onPhraseAdded()
+        }
       }
     } catch (error) {
       console.error('Failed to submit phrase:', error)

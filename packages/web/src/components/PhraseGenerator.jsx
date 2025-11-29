@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 const API_BASE = ''
 
-function PhraseGenerator({ gameId }) {
+function PhraseGenerator({ gameId, onPhraseDrawn }) {
   const [phrase, setPhrase] = useState(null)
 
   const handleClick = async (event) => {
@@ -11,6 +11,10 @@ function PhraseGenerator({ gameId }) {
       const response = await fetch(`${API_BASE}/api/games/${gameId}/phrase`, { method: 'GET' })
       const data = await response.text()
       setPhrase(data)
+      // Notify parent to refresh stats
+      if (onPhraseDrawn) {
+        onPhraseDrawn()
+      }
     } catch (error) {
       console.error('Failed to fetch phrase:', error)
       setPhrase('Error fetching phrase. Please try again.')

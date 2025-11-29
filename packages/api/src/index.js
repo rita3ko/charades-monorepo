@@ -1,5 +1,47 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { DurableObject } from 'cloudflare:workers'
+
+// GameState Durable Object - tracks word counts for each game
+export class GameState extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env)
+    this.ctx = ctx
+    this.env = env
+  }
+
+  // Add a phrase to the game
+  async addPhrase() {
+    const total = (await this.ctx.storage.get('totalPhrases')) || 0
+    await this.ctx.storage.put('totalPhrases', total + 1)
+    return { total: total + 1 }
+  }
+
+  // Mark a phrase as used
+  async usePhrase() {
+    const used = (await this.ctx.storage.get('usedPhrases')) || 0
+    await this.ctx.storage.put('usedPhrases', used + 1)
+    return { used: used + 1 }
+  }
+
+  // Get current stats
+  async getStats() {
+    const total = (await this.ctx.storage.get('totalPhrases')) || 0
+    const used = (await this.ctx.storage.get('usedPhrases')) || 0
+    return {
+      total,
+      used,
+      remaining: total - used
+    }
+  }
+
+  // Reset the game (mark all phrases as unused)
+  async reset() {
+    await this.ctx.storage.put('usedPhrases', 0)
+    const total = (await this.ctx.storage.get('totalPhrases')) || 0
+    return { total, used: 0, remaining: total }
+  }
+}
 
 const app = new Hono()
 
@@ -27,6 +69,13 @@ function generateGameId() {
   ).join('')
 }
 
+/**
+ * Get the GameState Durable Object stub for a game
+ */
+function getGameStateStub(env, gameId) {
+  return env.GAME_STATE.idFromName(gameId)
+}
+
 // API Routes
 
 // Health check
@@ -49,6 +98,50 @@ app.get('/api/games/:gameId', async (c) => {
   }
   
   return c.json({ id: gameId, data: game })
+})
+
+// Get game stats (words remaining)
+app.get('/api/games/:gameId/stats', async (c) => {
+  const gameId = c.req.param('gameId')
+  
+  // Verify game exists
+  const game = await c.env.GAMES.get(gameId)
+  if (game === null) {
+    return c.json({ error: 'No such game exists' }, 404)
+  }
+  
+  // Get stats from Durable Object
+  const id = c.env.GAME_STATE.idFromName(gameId)
+  const stub = c.env.GAME_STATE.get(id)
+  const stats = await stub.getStats()
+  
+  return c.json(stats)
+})
+
+// Reset game (mark all phrases as unused)
+app.post('/api/games/:gameId/reset', async (c) => {
+  const gameId = c.req.param('gameId')
+  
+  // Verify game exists
+  const game = await c.env.GAMES.get(gameId)
+  if (game === null) {
+    return c.json({ error: 'No such game exists' }, 404)
+  }
+  
+  // Reset in Durable Object
+  const id = c.env.GAME_STATE.idFromName(gameId)
+  const stub = c.env.GAME_STATE.get(id)
+  const stats = await stub.reset()
+  
+  // Also reset the used flag in KV for all phrases
+  const phrases = await c.env.PHRASES.list({ prefix: `${gameId}-` })
+  for (const key of phrases.keys) {
+    const phraseData = JSON.parse(await c.env.PHRASES.get(key.name))
+    phraseData.used = false
+    await c.env.PHRASES.put(key.name, JSON.stringify(phraseData))
+  }
+  
+  return c.json(stats)
 })
 
 // Get a random phrase from a game
@@ -80,6 +173,11 @@ app.get('/api/games/:gameId/phrase', async (c) => {
   phrase.used = true
   await c.env.PHRASES.put(phraseKey, JSON.stringify(phrase))
 
+  // Update Durable Object stats
+  const id = c.env.GAME_STATE.idFromName(gameId)
+  const stub = c.env.GAME_STATE.get(id)
+  await stub.usePhrase()
+
   return c.text(phrase.phrase)
 })
 
@@ -100,6 +198,12 @@ app.post('/api/games/:gameId/phrase', async (c) => {
   })
 
   await c.env.PHRASES.put(phraseKey, phraseValue)
+
+  // Update Durable Object stats
+  const id = c.env.GAME_STATE.idFromName(gameId)
+  const stub = c.env.GAME_STATE.get(id)
+  await stub.addPhrase()
+
   return c.text('Phrase added!')
 })
 
@@ -148,6 +252,11 @@ app.get('/games/:gameId/phrase', async (c) => {
   phrase.used = true
   await c.env.PHRASES.put(phraseKey, JSON.stringify(phrase))
 
+  // Update Durable Object stats
+  const id = c.env.GAME_STATE.idFromName(gameId)
+  const stub = c.env.GAME_STATE.get(id)
+  await stub.usePhrase()
+
   return c.text(phrase.phrase)
 })
 
@@ -166,6 +275,12 @@ app.post('/games/:gameId/phrase', async (c) => {
   })
 
   await c.env.PHRASES.put(phraseKey, phraseValue)
+
+  // Update Durable Object stats
+  const id = c.env.GAME_STATE.idFromName(gameId)
+  const stub = c.env.GAME_STATE.get(id)
+  await stub.addPhrase()
+
   return c.text('Phrase added!')
 })
 
