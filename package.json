@@ -10,13 +10,17 @@
     "dev:api": "npm run dev --workspace=packages/api",
     "dev:web": "npm run dev --workspace=packages/web",
     "build": "npm run build --workspace=packages/web",
-    "deploy": "npm run deploy --workspace=packages/api",
+    "deploy": "wrangler deploy",
     "deploy:api": "npm run deploy --workspace=packages/api",
     "test": "npm run test --workspaces --if-present",
     "format": "prettier --write '**/*.{js,jsx,ts,tsx,css,json,md}'"
   },
   "devDependencies": {
-    "prettier": "^3.0.0"
+    "prettier": "^3.0.0",
+    "wrangler": "^3.78.0"
+  },
+  "dependencies": {
+    "hono": "^4.6.2"
   },
   "engines": {
     "node": ">=18.0.0"

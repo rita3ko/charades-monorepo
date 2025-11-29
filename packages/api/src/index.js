@@ -169,12 +169,4 @@ app.post('/games/:gameId/phrase', async (c) => {
   return c.text('Phrase added!')
 })
 
-// Root route
-app.get('/', (c) => c.text('Charades API - Use /api for API endpoints'))
-
-// Catch-all for unknown routes
-app.all('*', (c) => {
-  return c.json({ error: 'Route not found' }, 404)
-})
-
 export default app

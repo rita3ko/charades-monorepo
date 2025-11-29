@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "charades",
+  "main": "packages/api/src/index.js",
+  "compatibility_date": "2024-09-18",
+  "assets": {
+    "directory": "packages/web/dist",
+    "not_found_handling": "single-page-application"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "GAMES",
+      "id": "10e4294130774c548b8c5861cf118369",
+      "preview_id": "80aca7c3ba4e4fb6a1399954883777b0"
+    },
+    {
+      "binding": "PHRASES",
+      "id": "4d3c9f8c6195471ebcdff952f7d1c68b",
+      "preview_id": "d8c49e328ebe4741811dfc0a84d5dac8"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
