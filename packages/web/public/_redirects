@@ -1,5 +1,0 @@
-# Proxy API requests to the Workers API
-/api/*  https://charades-api.rita.workers.dev/api/:splat  200
-
-# SPA fallback - serve index.html for all non-file routes
-/*  /index.html  200
